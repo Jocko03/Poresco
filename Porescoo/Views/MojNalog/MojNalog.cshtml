@@ -1,0 +1,760 @@
+﻿@model _1_SlojPodataka.Modeli.PoreskiObveznikModel
+@{
+     Layout = null; // POTPUNO UKLANJA HEADER, FOOTER I NAVIGACIJU SA OVE STRANICE
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+     <meta charset="utf-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>Moj Nalog - PPDG-3R</title>
+     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+     <div class="container mt-4 no-print">
+          @* ==========================================
+               GLAVNA JEDINSTVENA FORMA (UNOS / IZMENA)
+               ========================================== *@
+          <div class="card p-3 mb-4 bg-light shadow-sm border-primary" id="glavnaKarticaForme">
+               <h5 id="naslovForme" class="text-primary">Unos novog obveznika</h5>
+               @using (Html.BeginForm("SacuvajSve", "MojNalog", FormMethod.Post, new { id = "masterForm" }))
+               {
+                    <div class="row g-3">
+                         <div class="col-md-3">@Html.TextBoxFor(m => m.Ime, new { @class = "form-control", placeholder = "Ime", id = "txtIme" })</div>
+                         <div class="col-md-3">@Html.TextBoxFor(m => m.Prezime, new { @class = "form-control", placeholder = "Prezime", id = "txtPrezime" })</div>
+                         <div class="col-md-3">@Html.TextBoxFor(m => m.Email, new { @class = "form-control", placeholder = "Email", id = "txtEmail" })</div>
+                         <div class="col-md-3">@Html.TextBoxFor(m => m.JMBG, new { @class = "form-control", placeholder = "JMBG", id = "txtJMBG" })</div>
+                         <div class="col-md-3">@Html.TextBoxFor(m => m.Opstina, new { @class = "form-control", placeholder = "Opština", id = "txtOpstina" })</div>
+                         <div class="col-md-3">@Html.TextBoxFor(m => m.Adresa, new { @class = "form-control", placeholder = "Adresa", id = "txtAdresa" })</div>
+                         <div class="col-md-2">@Html.TextBoxFor(m => m.Broj, new { @class = "form-control", placeholder = "Broj", id = "txtBroj" })</div>
+                         <div class="col-md-4">@Html.TextBoxFor(m => m.BrojTelefona, new { @class = "form-control", placeholder = "Telefon", id = "txtTelefon" })</div>
+                         <div class="col-md-6">@Html.TextBoxFor(m => m.Drzava, new { @class = "form-control", placeholder = "Država", id = "txtDrzava" })</div>
+                         <div class="col-md-6">@Html.TextBoxFor(m => m.JmbgPoreskogPunomocnika, new { @class = "form-control", placeholder = "JMBG Punomoćnika", id = "txtPunomocnik" })</div>
+                    </div>
+
+                    <h5 class="mt-4">Transakcije (Akcije)</h5>
+                    <div id="transakcije-kontejner">
+                         <div class="row g-2 mb-2 transakcija-red" id="prvi-red">
+                              <div class="col-md-2"><input type="text" class="form-control" placeholder="Naziv akcije" oninput="izracunajPorez()" /></div>
+                              <div class="col-md-2"><input type="text" class="form-control" placeholder="DD.MM.YYYY" oninput="izracunajPorez()" /></div>
+                              <div class="col-md-3"><input type="number" step="any" class="form-control" placeholder="Prodajna cena" oninput="izracunajPorez()" /></div>
+                              <div class="col-md-2"><input type="text" class="form-control" placeholder="DD.MM.YYYY" oninput="izracunajPorez()" /></div>
+                              <div class="col-md-3"><input type="number" step="any" class="form-control" placeholder="Nabavna cena" oninput="izracunajPorez()" /></div>
+                         </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mb-3">
+                         <button type="button" class="btn btn-outline-success btn-sm" onclick="dodajRed()">+ Dodaj red</button>
+                         <button type="button" id="btnResetuj" class="btn btn-outline-secondary btn-sm d-none" onclick="resetujFormuNaUnos()">Nazad na unos novog</button>
+                    </div>
+
+                    <div class="card p-3 mb-3 bg-dark text-white shadow-sm">
+                         <div class="row">
+                              <div class="col-md-6"><h5>Ukupni Kapitalni Balans: <span id="txtUkupniDobitak">0.00</span></h5></div>
+                              <div class="col-md-6 text-end"><h5>Porez za plaćanje (15%): <span id="txtIznosPoreza" class="text-warning">0.00</span> RSD</h5></div>
+                         </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                         <button type="submit" id="btnGlavnaAkcija" class="btn btn-primary">SAČUVAJ NOVI NALOG</button>
+                         <button type="button" id="btnStampaj" class="btn btn-secondary" onclick="pokreniStampu()">🖨️ ŠTAMPAJ PPDG-3R</button>
+                    </div>
+               }
+          </div>
+
+          <hr />
+
+          <h4>Lista obveznika</h4>
+          <input type="text" id="filterInput" class="form-control mb-3" placeholder="Pretraži..." onkeyup="filtriraj()">
+
+          <div class="list-group mb-4" id="listaObveznika">
+          </div>
+     </div>
+
+     @* =========================================================================
+          VERNA REPRODUKCIJA OBRASCA PPDG-3R
+          ========================================================================= *@
+     <div id="izvestajZaStampu" class="print-only">
+          <table style="width: 100%; border: none; margin-bottom: 3px;">
+               <tr>
+                    <td style="border: none; font-size: 10px; font-weight: bold; padding: 0;">Пореска пријава за утврђивање пореза на капиталне добитке</td>
+                    <td style="border: none; text-align: right; font-size: 10px; font-weight: bold; padding: 0;">Образац ППДГ-3Р</td>
+               </tr>
+          </table>
+
+          <div class="gov-section-title">Део 1. Подаци о пријави</div>
+          <table class="gov-table text-center table-fixed">
+               <thead>
+                    <tr>
+                         <th style="width: 10%;">1.1 Врста пријаве</th>
+                         <th style="width: 10%;">1.1а Основ за пријаву</th>
+                         <th style="width: 26%;">1.2 Датум остваривања прихода/дела прихода</th>
+                         <th style="width: 26%;">1.3 Датум доспелости за подношење пореске пријаве</th>
+                         <th style="width: 18%;">1.4 Датум и начин подношења пријаве</th>
+                         <th style="width: 10%;">1.5 Измена</th>
+                    </tr>
+               </thead>
+               <tbody>
+                    <tr style="height: 36px;">
+                         <td><span class="kockica">1</span></td>
+                         <td><span class="kockica">6</span></td>
+                         <td id="lblDatumOstvarivanja" style="padding: 2px 1px !important;"></td>
+                         <td id="lblDatumDospelosti" style="padding: 2px 1px !important;"></td>
+                         <td id="lblDatumPodnosenja" style="padding: 2px 1px !important;"></td>
+                         <td><div class="kockica-h"></div></td>
+                    </tr>
+               </tbody>
+          </table>
+
+          <div class="gov-section-title">Део 2. Подаци о пореском обвезнику</div>
+          <table class="gov-table format-rows">
+               <tr>
+                    <td style="width: 40%;">2.1 Тип пореског обвезnika</td>
+                    <td class="linija-tekst" style="font-weight: bold;">11 - резидент физичко лице</td>
+               </tr>
+               <tr>
+                    <td>2.2 Порески идентификациони број (ЈМБГ/ЕБС/ПИБ)</td>
+                    <td id="lblPrintJMBG" class="kockice-td font-courier"></td>
+               </tr>
+               <tr>
+                    <td>2.3 Име и презиме пореског обвезника</td>
+                    <td id="lblPrintImePrezime" class="linija-tekst text-uppercase"></td>
+               </tr>
+               <tr>
+                    <td>2.4 Пребивалиште/боравиште/седиште/општина остваривања прихода</td>
+                    <td id="lblPrintOpstina" class="linija-tekst"></td>
+               </tr>
+               <tr>
+                    <td>2.5 Адреса пореског обvezника</td>
+                    <td id="lblPrintAdresa" class="linija-tekst"></td>
+               </tr>
+               <tr>
+                    <td>2.6 Телефон</td>
+                    <td id="lblPrintTelefon" class="linija-tekst"></td>
+               </tr>
+               <tr>
+                    <td>2.7 Електронска адреса</td>
+                    <td id="lblPrintEmail" class="linija-tekst" style="text-transform: none;"></td>
+               </tr>
+               <tr>
+                    <td>2.8 ЈМБГ подносиоца пријаве</td>
+                    <td id="lblPrintJmbgPodnosioca" class="kockice-td font-courier"></td>
+               </tr>
+               <tr>
+                    <td>2.9 Земља резидентства</td>
+                    <td id="lblPrintDrzava" class="linija-tekst"></td>
+               </tr>
+               <tr>
+                    <td>2.10 ЈМБГ/ПИБ пореског пуномоћника</td>
+                    <td id="lblPrintPunomocnik" class="kockice-td font-courier"></td>
+               </tr>
+          </table>
+
+          <div class="gov-section-title">Део 3. Подаци за утврђивање пореза код преноса права/удела/дигиталне имовине</div>
+          <table class="gov-table table-fixed">
+               <thead>
+                    <tr>
+                         <th style="width: 8%; text-align: center;">3.1 Редни број</th>
+                         <th style="width: 23%; text-align: center;">3.2 Датум преноса</th>
+                         <th style="width: 25%; text-align: center;">3.3 Продајна цена</th>
+                         <th style="width: 24%; text-align: center;">3.4 Датум стицања</th>
+                         <th style="width: 20%; text-align: center;">3.5 Набавна цена</th>
+                    </tr>
+               </thead>
+               <tbody id="printTransakcijeBody">
+               </tbody>
+          </table>
+     </div>
+
+     <style>
+     .print-only {
+          display: none !important;
+     }
+
+     @@media print {
+          @@page {
+               margin: 0.3cm !important;
+          }
+
+          .no-print {
+               display: none !important;
+          }
+
+          html, body {
+               background: #fff;
+               color: #000;
+               font-family: "Arial", sans-serif;
+               margin: 0;
+               padding: 0;
+          }
+
+          .print-only {
+               display: block !important;
+               position: relative;
+               width: 100%;
+               padding: 0px;
+          }
+
+          .gov-section-title {
+               font-size: 10px;
+               font-weight: bold;
+               background-color: #ffffff !important;
+               border: 1px solid #000;
+               padding: 2px 4px;
+               margin-top: 6px;
+               margin-bottom: -1px;
+               -webkit-print-color-adjust: exact;
+               print-color-adjust: exact;
+          }
+
+          .gov-table {
+               width: 100%;
+               border-collapse: collapse;
+               margin-bottom: 3px;
+               table-layout: fixed;
+          }
+
+          .gov-table th, .gov-table td {
+               border: 1px solid #000;
+               padding: 2px 3px;
+               font-size: 9px;
+               vertical-align: middle;
+          }
+
+          .gov-table th {
+               font-size: 8px;
+               background-color: #ffffff !important;
+               font-weight: normal;
+               text-align: center;
+               -webkit-print-color-adjust: exact;
+               print-color-adjust: exact;
+          }
+
+          .format-rows td {
+               height: 19px;
+               padding: 1px 4px;
+          }
+
+          .text-center {
+               text-align: center !important;
+          }
+
+          .text-right {
+               text-align: right !important;
+          }
+
+          .text-uppercase {
+               text-transform: uppercase;
+          }
+
+          .datum-kockice-wrapper {
+               display: block !important;
+               white-space: nowrap !important;
+               text-align: center;
+               width: 100%;
+               box-sizing: border-box;
+          }
+
+          .kockica {
+               display: inline-block !important;
+               width: 11px;
+               height: 14px;
+               border: 1px solid #000;
+               text-align: center;
+               line-height: 14px;
+               font-weight: normal;
+               font-size: 9px;
+               margin: 0 !important;
+               padding: 0 !important;
+               background: #fff;
+               border-right: none;
+          }
+
+          .kockica:last-of-type {
+               border-right: 1px solid #000 !important;
+          }
+
+          .kockica-prazna {
+               display: inline-block !important;
+               width: 11px;
+               height: 14px;
+               border: 1px solid #000;
+               margin: 0 !important;
+               padding: 0 !important;
+               background: #fff;
+               border-right: none;
+          }
+
+          .kockica-prazna:last-of-type {
+               border-right: 1px solid #000 !important;
+          }
+
+          .kockica-h {
+               display: inline-block;
+               width: 25px;
+               height: 14px;
+               border: 1px solid #000;
+               margin: 0 auto;
+               background: #fff;
+          }
+
+          .sub-label {
+               display: block !important;
+               font-size: 6px;
+               text-align: center;
+               color: #000;
+               margin-top: 1px;
+               font-family: Arial, sans-serif;
+               letter-spacing: 0px;
+          }
+
+          .linija-tekst {
+               border-bottom: 1px solid #000;
+               font-weight: normal;
+               font-size: 10px;
+               padding-left: 8px !important;
+          }
+
+          .linija-polje-tabela {
+               display: block;
+               width: 90%;
+               border-bottom: 1px solid #000;
+               text-align: right;
+               font-weight: normal;
+               font-size: 10px;
+               height: 14px;
+               margin-top: 1px;
+          }
+
+          .kockice-td {
+               padding-left: 5px !important;
+               border-bottom: 1px solid #000;
+          }
+
+          .font-courier {
+               font-family: "Courier New", Courier, monospace !important;
+               font-size: 11px !important;
+               letter-spacing: 4px;
+               font-weight: bold;
+          }
+
+          .cena-kontejner {
+               min-height: 30px;
+               display: flex;
+               flex-direction: column;
+               justify-content: space-between;
+          }
+
+          .akcija-rukom {
+               font-size: 8px;
+               font-style: italic;
+               color: #000;
+               text-align: left;
+               display: block;
+               margin-bottom: -3px;
+               font-family: "Courier New", monospace;
+               font-weight: bold;
+          }
+     }
+     </style>
+
+     <script>
+     let isModIzmene = false;
+
+     document.addEventListener("DOMContentLoaded", function () {
+          const forma = document.getElementById('masterForm');
+          if (forma) {
+               forma.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    if (validirajFormu()) {
+                         sacuvajFormu();
+                    }
+               });
+          }
+
+          document.getElementById('listaObveznika').addEventListener('click', function (e) {
+               let link = e.target.closest('.obveznik-link');
+               if (link) {
+                    try {
+                         let jsonRaw = link.getAttribute('data-obveznik');
+                         let podaci = JSON.parse(jsonRaw);
+                         prebaciUModIzmene(podaci);
+                    } catch (err) {
+                         console.error(err);
+                    }
+               }
+          });
+          osveziAtributeIndeksa();
+
+          
+          filtriraj();
+     });
+
+     function validirajFormu() {
+          const regexSlova = /^[A-Za-zČčĆćŽžŠšĐđ\s]{2,50}$/;
+          const regexEmail = /^[a-zA-Z0-9._%+-]+@@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/; 
+          const regexJmbg = /^[0-9]{13}$/;
+          const regexTelefon = /^[0-9\/+-]{9,20}$/;
+          const regexDatum = /^(0[1-9]|[12][0-9]|3[01])\.(0[1-9]|1[012])\.(19|20)\d\d$/;
+
+          let ime = document.getElementById('txtIme').value.trim();
+          let prezime = document.getElementById('txtPrezime').value.trim();
+          let email = document.getElementById('txtEmail').value.trim();
+          let jmbg = document.getElementById('txtJMBG').value.trim();
+          let opstina = document.getElementById('txtOpstina').value.trim();
+          let adresa = document.getElementById('txtAdresa').value.trim();
+          let telefon = document.getElementById('txtTelefon').value.trim();
+          let punomocnik = document.getElementById('txtPunomocnik').value.trim();
+
+          if (!regexSlova.test(ime)) { alert("Greška: Ime mora da sadrži samo slova (minimum 2 karaktera)!"); return false; }
+          if (!regexSlova.test(prezime)) { alert("Greška: Prezime mora da sadrži samo slova (minimum 2 karaktera)!"); return false; }
+          if (!regexEmail.test(email)) { alert("Greška: Unesite validnu Email adresu!"); return false; }
+          if (!regexJmbg.test(jmbg)) { alert("Greška: JMBG mora imati tačno 13 cifara!"); return false; }
+          if (opstina === "") { alert("Greška: Polje Opština je obavezno!"); return false; }
+          if (adresa === "") { alert("Greška: Polje Adresa je obavezno!"); return false; }
+          if (!regexTelefon.test(telefon)) { alert("Greška: Telefon nije u ispravnom formatu!"); return false; }
+
+          if (punomocnik !== "" && !regexJmbg.test(punomocnik)) {
+               alert("Greška: JMBG poreskog punomoćnika mora imati tačno 13 cifara ukoliko je unet!");
+               return false;
+          }
+
+          let redovi = document.querySelectorAll('#transakcije-kontejner .transakcija-red');
+          let imaValidnaTransakcija = false;
+
+       
+
+          for (let i = 0; i < redovi.length; i++) {
+               let fields = redovi[i].querySelectorAll('input');
+               let nA = fields[0].value.trim();
+               let dP = fields[1].value.trim();
+               let pC = fields[2].value.trim();
+               let dS = fields[3].value.trim();
+               let nC = fields[4].value.trim();
+
+               if (nA !== "" || dP !== "" || pC !== "" || dS !== "" || nC !== "") {
+                    if (nA === "") { alert(`Greška u redu ${i+1}: Unesite naziv akcije!`); return false; }
+                    if (!regexDatum.test(dP)) { alert(`Greška u redu ${i+1}: Datum prenosa mora biti u formatu DD.MM.YYYY!`); return false; }
+                    if (pC === "" || parseFloat(pC) < 0) { alert(`Greška u redu ${i+1}: Prodajna cena mora biti pozitivan broj!`); return false; }
+                    if (!regexDatum.test(dS)) { alert(`Greška u redu ${i+1}: Datum sticanja mora biti u formatu DD.MM.YYYY!`); return false; }
+                    if (nC === "" || parseFloat(nC) < 0) { alert(`Greška u redu ${i+1}: Nabavna cena mora biti pozitivan broj!`); return false; }
+                    imaValidnaTransakcija = true;
+               }
+          }
+
+          if (!imaValidnaTransakcija) {
+               alert("Greška: Morate uneti barem jednu kompletnu transakciju!");
+               return false;
+          }
+
+          return true;
+     }
+
+     function prebaciUModIzmene(o) {
+          isModIzmene = true;
+          document.getElementById('naslovForme').innerText = "Izmena postojećeg obveznika";
+          document.getElementById('naslovForme').className = "text-warning";
+          document.getElementById('glavnaKarticaForme').className = "card p-3 mb-4 bg-light shadow-sm border-warning";
+
+          let btnGlavni = document.getElementById('btnGlavnaAkcija');
+          btnGlavni.innerText = "SAČUVAJ IZMENE OBVEZNIKA";
+          btnGlavni.className = "btn btn-warning";
+          document.getElementById('btnResetuj').classList.remove('d-none');
+          document.getElementById('btnStampaj').disabled = false;
+
+          document.getElementById('txtIme').value = o.Ime || "";
+          document.getElementById('txtPrezime').value = o.Prezime || "";
+          document.getElementById('txtEmail').value = o.Email || "";
+
+          let jmbgPolje = document.getElementById('txtJMBG');
+          jmbgPolje.value = o.JMBG || "";
+          jmbgPolje.readOnly = true;
+
+          document.getElementById('txtOpstina').value = o.Opstina || "";
+          document.getElementById('txtAdresa').value = o.Adresa || "";
+          document.getElementById('txtBroj').value = o.Broj || "";
+          document.getElementById('txtTelefon').value = o.BrojTelefona || "";
+          document.getElementById('txtDrzava').value = o.Drzava || "";
+          document.getElementById('txtPunomocnik').value = o.JmbgPoreskogPunomocnika || "";
+
+          let kontejner = document.getElementById('transakcije-kontejner');
+          kontejner.innerHTML = "";
+
+          fetch('/MojNalog/DajPodatke?jmbg=' + encodeURIComponent(o.JMBG.trim()))
+          .then(res => res.json())
+          .then(data => {
+               if (data && data.length > 0) {
+                    data.forEach(t => dataDodajRed(t));
+               } else {
+                    dataDodajRed();
+               }
+               izracunajPorez();
+          })
+          .catch(() => dataDodajRed());
+     }
+
+     function resetujFormuNaUnos() {
+          isModIzmene = false;
+          document.getElementById('naslovForme').innerText = "Unos novog obveznika";
+          document.getElementById('naslovForme').className = "text-primary";
+          document.getElementById('glavnaKarticaForme').className = "card p-3 mb-4 bg-light shadow-sm border-primary";
+
+          let btnGlavni = document.getElementById('btnGlavnaAkcija');
+          btnGlavni.innerText = "SAČUVAJ NOVI NALOG";
+          btnGlavni.className = "btn btn-primary";
+          document.getElementById('btnResetuj').classList.add('d-none');
+          document.getElementById('btnStampaj').disabled = true;
+
+          let jmbgPolje = document.getElementById('txtJMBG');
+          jmbgPolje.value = "";
+          jmbgPolje.readOnly = false;
+
+          document.getElementById('masterForm').reset();
+          document.getElementById('transakcije-kontejner').innerHTML = "";
+          dataDodajRed();
+          izracunajPorez();
+     }
+
+     function dodajRed() { dataDodajRed(null); }
+
+     function dataDodajRed(data = null) {
+          let nA = data ? (data.NazivAkcije || "") : "";
+          let dP = data ? (data.DatumPrenosa || "") : "";
+          let dS = data ? (data.DatumSticanja || "") : "";
+          let pC = data ? (data.ProdajnaCena ?? "") : "";
+          let nC = data ? (data.NabavnaCena ?? "") : "";
+
+          let red = `
+               <div class="row g-2 mb-2 transakcija-red">
+                    <div class="col-md-2"><input type="text" class="form-control" value="${nA}" placeholder="Naziv akcije" oninput="izracunajPorez()" /></div>
+                    <div class="col-md-2"><input type="text" class="form-control" value="${dP}" placeholder="DD.MM.YYYY" oninput="izracunajPorez()" /></div>
+                    <div class="col-md-3"><input type="number" step="any" class="form-control" value="${pC}" placeholder="Prodajna" oninput="izracunajPorez()" /></div>
+                    <div class="col-md-2"><input type="text" class="form-control" value="${dS}" placeholder="DD.MM.YYYY" oninput="izracunajPorez()" /></div>
+                    <div class="col-md-3"><input type="number" step="any" class="form-control" value="${nC}" placeholder="Nabavna" oninput="izracunajPorez()" /></div>
+               </div>`;
+          document.getElementById('transakcije-kontejner').insertAdjacentHTML('beforeend', red);
+          osveziAtributeIndeksa();
+     }
+
+     function osveziAtributeIndeksa() {
+          let redovi = document.querySelectorAll('#transakcije-kontejner .transakcija-red');
+          redovi.forEach((red, index) => {
+               let fields = red.querySelectorAll('input');
+               if (fields.length >= 5) {
+                    fields[0].setAttribute('name', `transakcije[${index}].NazivAkcije`);
+                    fields[1].setAttribute('name', `transakcije[${index}].DatumPrenosa`);
+                    fields[2].setAttribute('name', `transakcije[${index}].ProdajnaCena`);
+                    fields[3].setAttribute('name', `transakcije[${index}].DatumSticanja`);
+                    fields[4].setAttribute('name', `transakcije[${index}].NabavnaCena`);
+               }
+          });
+     }
+
+          function pokupiTransakcijeSaEkrana() {
+               let lista = [];
+               let redovi = document.querySelectorAll('#transakcije-kontejner .transakcija-red');
+               redovi.forEach(red => {
+                    let fields = red.querySelectorAll('input');
+                    let nA = fields[0]?.value.trim();
+                    let dP = fields[1]?.value.trim(); 
+                    let pC = parseFloat(fields[2]?.value) || 0;
+                    let dS = fields[3]?.value.trim(); 
+                    let nC = parseFloat(fields[4]?.value) || 0;
+
+                    if (nA !== "") {
+                         
+                         lista.push({
+                              NazivAkcije: nA,
+                              DatumPrenosa: dP,
+                              ProdajnaCena: pC,
+                              DatumSticanja: dS,
+                              NabavnaCena: nC
+                         });
+                    }
+               });
+               return lista;
+          }
+
+     function sacuvajFormu() {
+          let jmbgVrednost = document.getElementById('txtJMBG').value.trim();
+          let obveznik = {
+               Ime: document.getElementById('txtIme').value.trim(),
+               Prezime: document.getElementById('txtPrezime').value.trim(),
+               Email: document.getElementById('txtEmail').value.trim(),
+               JMBG: jmbgVrednost,
+               Opstina: document.getElementById('txtOpstina').value.trim(),
+               Adresa: document.getElementById('txtAdresa').value.trim(),
+               Broj: document.getElementById('txtBroj').value.trim(),
+               BrojTelefona: document.getElementById('txtTelefon').value.trim(),
+               Drzava: document.getElementById('txtDrzava').value.trim(),
+               JmbgPoreskogPunomocnika: document.getElementById('txtPunomocnik').value.trim()
+          };
+
+          let transakcijeLista = pokupiTransakcijeSaEkrana();
+          fetch('/MojNalog/SacuvajSve', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ obveznik: obveznik, transakcije: transakcijeLista })
+          })
+          .then(res => res.json())
+          .then(data => {
+               alert(data.poruka);
+               if (data.uspeh) { location.reload(); }
+          });
+     }
+
+     function izracunajPorez() {
+          let transakcijeLista = pokupiTransakcijeSaEkrana();
+          if (transakcijeLista.length === 0) {
+               document.getElementById('txtIznosPoreza').innerText = "0.00 RSD";
+               document.getElementById('txtUkupniDobitak').innerText = "0.00";
+               return;
+          }
+          fetch('/MojNalog/IzracunajBllPorez', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ transakcije: transakcijeLista })
+          })
+          .then(res => res.json())
+          .then(data => {
+               if (data.uspeh) {
+                    document.getElementById('txtIznosPoreza').innerText = data.iznosPoreza.toLocaleString('sr-RS', { minimumFractionDigits: 2 }) + " RSD";
+                    let brutoBalans = transakcijeLista.reduce((sum, t) => sum + (t.ProdajnaCena - t.NabavnaCena), 0);
+                    document.getElementById('txtUkupniDobitak').innerText = brutoBalans.toLocaleString('sr-RS', { minimumFractionDigits: 2 });
+               }
+          });
+     }
+
+     function filtriraj() {
+          let tekstZaPretragu = document.getElementById('filterInput').value.trim();
+          let kontejnerListe = document.getElementById('listaObveznika');
+          fetch('/MojNalog/FiltrirajTabelu?tekst=' + encodeURIComponent(tekstZaPretragu))
+          .then(res => res.json())
+          .then(data => {
+               kontejnerListe.innerHTML = "";
+               if (data && data.length > 0) {
+                    data.forEach(stavka => {
+                         let obv = stavka.Obveznik;
+                         let jsonString = JSON.stringify(obv);
+                         let stavkaHtml = `
+                              <div class="list-group-item d-flex justify-content-between align-items-center">
+                                   <a href="javascript:void(0)" class="text-decoration-none flex-grow-1 obveznik-link" data-obveznik='${jsonString}'>
+                                        <strong>${obv.Ime} ${obv.Prezime}</strong> - ${obv.JMBG}
+                                   </a>
+                                   <a href="/MojNalog/Obrisi?email=${encodeURIComponent(obv.Email)}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Obriši obveznika?')">🗑️</a>
+                              </div>`;
+                         kontejnerListe.insertAdjacentHTML('beforeend', stavkaHtml);
+                    });
+               }
+          });
+     }
+
+     function generisiKockiceZvanicne(datumStr) {
+          let tekst = String(datumStr || '').trim();
+          let cistiBrojevi = tekst.replace(/[^0-9]/g, '');
+          let html = '<div class="datum-kockice-wrapper">';
+          for (let i = 0; i < 8; i++) {
+               let k = cistiBrojevi[i] || ' ';
+               html += `<span class="kockica">${k}</span>`;
+          }
+          html += `<span class="sub-label">дд мм гггг</span></div>`;
+          return html;
+     }
+
+     function generisiPrazneKockice() {
+          let html = '<div class="datum-kockice-wrapper">';
+          for (let i = 0; i < 8; i++) { html += `<span class="kockica-prazna"></span>`; }
+          html += `<span class="sub-label">дд мм гггг</span></div>`;
+          return html;
+     }
+
+     function formatirajKaoKockiceTekst(vrednost, duzina) {
+          let tekst = String(vrednost || '').trim();
+          let resultado = "";
+          for(let i=0; i<duzina; i++){
+               resultado += (tekst[i] || " ") + " ";
+          }
+          return resultado;
+     }
+
+     function pokreniStampu() {
+          let jmbgVal = document.getElementById('txtJMBG').value;
+
+          document.getElementById('lblPrintJMBG').innerText = formatirajKaoKockiceTekst(jmbgVal, 13);
+          document.getElementById('lblPrintImePrezime').innerText = document.getElementById('txtIme').value + " " + document.getElementById('txtPrezime').value;
+          document.getElementById('lblPrintOpstina').innerText = document.getElementById('txtOpstina').value;
+          document.getElementById('lblPrintAdresa').innerText = document.getElementById('txtAdresa').value + " " + document.getElementById('txtBroj').value;
+          document.getElementById('lblPrintTelefon').innerText = document.getElementById('txtTelefon').value;
+          document.getElementById('lblPrintEmail').innerText = document.getElementById('txtEmail').value;
+          document.getElementById('lblPrintJmbgPodnosioca').innerText = formatirajKaoKockiceTekst(jmbgVal, 13);
+          document.getElementById('lblPrintDrzava').innerText = document.getElementById('txtDrzava').value;
+
+          let punomocnikVal = document.getElementById('txtPunomocnik').value;
+          document.getElementById('lblPrintPunomocnik').innerText = punomocnikVal ? formatirajKaoKockiceTekst(punomocnikVal, 13) : " ";
+
+          let tBody = document.getElementById('printTransakcijeBody');
+          tBody.innerHTML = "";
+
+          let aktivneTransakcije = pokupiTransakcijeSaEkrana();
+
+          if (aktivneTransakcije.length > 0) {
+               document.getElementById('lblDatumOstvarivanja').innerHTML = generisiKockiceZvanicne(aktivneTransakcije[0].DatumPrenosa);
+               document.getElementById('lblDatumDospelosti').innerHTML = generisiKockiceZvanicne(aktivneTransakcije[0].DatumPrenosa);
+
+               let danas = new Date();
+               let dan = String(danas.getDate()).padStart(2, '0');
+               let mesec = String(danas.getMonth() + 1).padStart(2, '0');
+               document.getElementById('lblDatumPodnosenja').innerHTML = generisiKockiceZvanicne(`${dan}.${mesec}.${danas.getFullYear()}`);
+
+               aktivneTransakcije.forEach((t, index) => {
+                    let red = `
+                         <tr style="height: 38px;">
+                              <td class="text-center"><span class="kockica" style="border:none;">${index + 1}</span></td>
+                              <td>${generisiKockiceZvanicne(t.DatumPrenosa)}</td>
+                              <td>
+                                   <div class="cena-kontejner">
+                                        <span class="akcija-rukom">${t.NazivAkcije}</span>
+                                        <span class="linija-polje-tabela">${Number(t.ProdajnaCena).toLocaleString('sr-RS', { minimumFractionDigits: 2 })}</span>
+                                   </div>
+                              </td>
+                              <td>${generisiKockiceZvanicne(t.DatumSticanja)}</td>
+                              <td>
+                                   <div class="cena-kontejner">
+                                        <span class="akcija-rukom">&nbsp;</span>
+                                        <span class="linija-polje-tabela">${Number(t.NabavnaCena).toLocaleString('sr-RS', { minimumFractionDigits: 2 })}</span>
+                                   </div>
+                              </td>
+                         </tr>`;
+                    tBody.insertAdjacentHTML('beforeend', red);
+               });
+          }
+
+          let preostaloRedova = Math.max(3 - aktivneTransakcije.length, 2);
+          for (let i = 0; i < preostaloRedova; i++) {
+               let prazanRed = `
+                    <tr style="height: 38px;">
+                         <td class="text-center"><span class="kockica-prazna" style="border:none; text-align:center; width:auto;"></span></td>
+                         <td>${generisiPrazneKockice()}</td>
+                         <td>
+                              <div class="cena-kontejner">
+                                   <span class="linija-polje-tabela" style="margin-top:10px;"></span>
+                              </div>
+                         </td>
+                         <td>${generisiPrazneKockice()}</td>
+                         <td>
+                              <div class="cena-kontejner">
+                                   <span class="linija-polje-tabela" style="margin-top:10px;"></span>
+                              </div>
+                         </td>
+                    </tr>`;
+               tBody.insertAdjacentHTML('beforeend', prazanRed);
+          }
+
+          window.print();
+     }
+     </script>
+
+</body>
+</html>

@@ -1,0 +1,46 @@
+﻿@model _1_SlojPodataka.Modeli.PrijavaModel
+
+@{
+     ViewBag.Title = "Prijava - Poresco";
+}
+<div class="container my-5">
+     <div class="row justify-content-center">
+          <div class="col-md-6 col-lg-4">
+               <div class="card shadow border-0 rounded-3">
+                    <div class="card-body p-5">
+                         <div class="text-center mb-4">
+                              <div class="display-4 text-primary mb-2">🔑</div>
+                              <h2 class="fw-bold">Prijava</h2>
+                              <p class="text-muted">Pristupite vašem nalogu</p>
+                         </div>
+
+                         @Html.ValidationSummary(true, "", new { @class = "text-danger small mb-3" })
+
+                    <form action="@Url.Action("Prijava", "Nalog")" method="post">
+                         @Html.AntiForgeryToken()
+
+                         <div class="mb-3">
+                              <label for="korisnickoIme" class="form-label small fw-bold text-uppercase">Korisničko ime</label>
+                              <input type="text" class="form-control form-control-lg bg-light" id="korisnickoIme" name="KorisnickoIme" required>
+                         </div>
+
+                         <div class="mb-4">
+                              <label for="lozinka" class="form-label small fw-bold text-uppercase">Lozinka</label>
+                              <input type="password" class="form-control form-control-lg bg-light" id="lozinka" name="Lozinka" required>
+                         </div>
+
+                         <div class="d-grid gap-2">
+                              <button type="submit" class="btn btn-primary btn-lg shadow-sm">Prijavi se</button>
+                         </div>
+                    </form>
+
+                         <hr class="my-4">
+
+                         <div class="text-center">
+                              <p class="mb-0 text-muted">Nemate nalog? <a href="@Url.Action("Registracija", "Nalog")" class="text-primary fw-bold text-decoration-none">Registrujte se</a></p>
+                         </div>
+                    </div>
+               </div>
+          </div>
+     </div>
+</div>
